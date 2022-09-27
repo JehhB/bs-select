@@ -1,24 +1,55 @@
 #!/usr/bin/env python3
 
+import sys
+from bs4 import BeautifulSoup
 from argparse import ArgumentParser
 
-DESCRIPTION = "A python script for scraping website using CSS selectors"
-parser = ArgumentParser(description = DESCRIPTION)
+def parse_args():
+    parser = ArgumentParser(description="A python script for scraping website using CSS selectors")
 
-parser.add_argument("selector", help="CSS selector to query")
-parser.add_argument("file", nargs="?", default=None,
-                    help="file to scrape. Default reading from standard input")
+    parser.add_argument("selector", help="CSS selector to query")
+    parser.add_argument("file", nargs="?", default=None,
+                        help="file to scrape. Default reading from standard input")
 
-parser.add_argument("--delim", help="delimeter between printed outputs", action="store")
-parser.add_argument("-a", "--attr", help="attributes to print", action="append", dest="attr")
-parser.add_argument("-s", "--string", action="append_const", dest="attr", const=0,
-                    help="print the string within tag") 
-parser.add_argument("-e", "--element", action="append_const", dest="attr", const=1,
-                    help="print whole element. Default if attr or string is not specified")
+    parser.add_argument("--delim", help="delimeter between printed outputs", action="store", default="\t")
+    parser.add_argument("-a", "--attr", help="attributes to print", action="append", dest="attr")
+    parser.add_argument("-s", "--string", action="append_const", dest="attr", const=0,
+                        help="print the string within tag") 
+    parser.add_argument("-e", "--element", action="append_const", dest="attr", const=1,
+                        help="print whole element. Default if attr or string is not specified")
+
+    return parser.parse_args()
+
+def read_file(filename):
+    if filename is None: return sys.stdin.read()
+    with open(filename, "r") as file:
+        return file.read()
+
+def select(inp, selector):
+    soup = BeautifulSoup(inp, "html.parser")
+    return soup.select(selector)
+
+def output(elem, prop):
+    if prop == 0: return str(elem.string or "")
+    if prop == 1: return str(elem)
+
+    try:
+        return elem[prop]
+    except: 
+        return ""
 
 def main():
-    args = parser.parse_args()
-    print(args)
+    args = parse_args()
+    inp = read_file(args.file)
+    selection = select(inp, args.selector)
+
+    if not selection: sys.exit(1)
+    if args.attr is None: args.attr = [1]
+
+    for elem in selection:
+        out = map(lambda prop: output(elem, prop), args.attr)
+        out = args.delim.join(out)
+        print(out)
 
 if __name__ == '__main__':
     main()
